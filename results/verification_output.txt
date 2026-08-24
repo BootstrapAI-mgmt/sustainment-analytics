@@ -1,0 +1,80 @@
+
+================ verification suite ================
+
+[PASS] numerical primitives
+  pctile median of 1:100 = 50.5000 (expect 50.5)  PASS
+  pctile clamps at the sample extremes  PASS
+  Poisson(4.5): mean 4.499, var 4.494 (both expect 4.5)  PASS
+  Poisson P(X=0) 0.01107 (expect 0.01111)  PASS
+  Weibull mean 1329.4 (expect 1328.4)  PASS
+  censoring: 0.100 failed by horizon (expect 0.103)  PASS
+  dropping survivors biases scale low: 325 vs 2042  PASS
+
+[PASS] guards: regressions from an adversarial review
+  zero time on wing is rejected, not turned into NaN  PASS
+  a valid censored record still evaluates finitely  PASS
+  NaN demand rate raises instead of forecasting zero  PASS
+  negative demand rate raises instead of returning noise  PASS
+  an empty record set stops the run rather than fitting nothing  PASS
+  a frozen chain fails the gate (was reporting R-hat 1.030)  PASS
+  zero acceptance fails the gate even when R-hat looks healthy  PASS
+  a zero installed quantity raises rather than raising availability  PASS
+  pctile ignores NaN (median 5.0, expect 5)  PASS
+  closed-form EBO matches 100k-sample Monte Carlo (max err 0.0013)  PASS
+  greedy spends down to under the cheapest item ($20 unspent, cheapest $320, stop: budget)  PASS
+  the buy list records WHY it stopped  PASS
+
+[PASS] ingest hardening under fault injection
+  367 raw records: 325 clean, 42 corrupted
+  accepted 325, quarantined 42 (11.4%); 95 removals reclassified, 187 still on wing
+  reconciles: 325 + 42 = 367  PASS
+  detection by injected fault class:
+    blank_serial         5 injected, 100% caught  PASS
+    duplicate            7 injected, 100% caught  PASS
+    future_stamp         4 injected, 100% caught  PASS
+    missing_install      7 injected, 100% caught  PASS
+    negative_repair      5 injected, 100% caught  PASS
+    negative_tow         5 injected, 100% caught  PASS
+    orphan_repair        5 injected, 100% caught  PASS
+    unit_mismatch        4 injected, 100% caught  PASS
+  false positives on clean records: 0.0% (cap 5%)  PASS
+    residual FPs are early non-failure removals caught by the
+    time-on-wing fence. Measured, not engineered away.
+  identical input gives an identical quarantine set  PASS
+  refuses to emit a fleet above the quarantine threshold  PASS
+  failure count -- truth 50 | hardened 43 (-14%) | naive 156 (+212%)
+    the naive path treats every removal as a failure. Those
+    records are valid, so no schema check would ever flag them,
+    and the resulting demand forecast is wrong by that margin.
+  hardened ingest is closer to truth than naive  PASS
+
+[PASS] parameter recovery
+  k      truth   1.800  post   1.596  90% CI [  1.352   1.854]  PASS
+  mu     truth   8.006  post   8.152  90% CI [  7.860   8.486]  PASS
+  sigma  truth   0.450  post   0.583  90% CI [  0.390   0.827]  PASS
+  lambda_i: 27 of 30 truths inside their 90% CI (90%)  PASS
+
+[PASS] partial pooling: paired estimator comparison
+  25 paired replicates per horizon
+    horizon     fails   no-MLE   partial      none  complete
+    400            11  190/375    0.5316    0.5864    0.6032
+    800            33   79/375    0.4088    0.4433    0.4899
+    h=400   paired t vs none +1.12 | vs complete +2.30
+    h=800   paired t vs none +1.34 | vs complete +3.19
+  partial pooling best in point estimate everywhere: PASS
+  advantage over complete pooling is significant (t>2): PASS
+  advantage over no-pooling is directional but NOT asserted as
+  significant in the sparse regime -- see the note in this file.
+
+[PASS] credible interval coverage
+  60 replicate fleets, 900 part-level intervals
+  clustered SE 0.0147 (naive SE would be 0.0100 -- 1.5x optimistic)
+  nominal 90% band, +/- 3 SE: [0.856, 0.944]
+  lambda_i coverage  0.887   PASS
+  k coverage         0.967
+  mu coverage        0.933
+  sigma coverage     0.833   (see docs/VALIDATION.md)
+
+----------------------------------------------------
+6 of 6 suites passed in 344 s
+

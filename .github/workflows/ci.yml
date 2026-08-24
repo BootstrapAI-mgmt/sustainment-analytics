@@ -1,0 +1,84 @@
+name: verification
+
+# The claims in the README are numbers, and numbers rot. This workflow
+# re-derives them on every push so the repository cannot quietly drift
+# away from what it says about itself.
+#
+# The MATLAB suite runs on GNU Octave: the numerics carry no toolbox
+# dependency by design, which is what makes them runnable here at all.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  python:
+    name: pipeline hardening and provenance (Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: install pytest
+        run: pip install pytest
+      - name: run the suite
+        working-directory: python
+        run: python -m pytest tests/ -q
+
+  matlab:
+    name: numerics and verification (Octave)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install Octave
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends octave
+          octave-cli --version | head -1
+      - name: end-to-end demo
+        working-directory: matlab
+        run: octave-cli demo_pipeline.m
+      - name: verification suite
+        working-directory: matlab
+        env:
+          # Coverage is a frequency property and needs replication. 60
+          # replicates take about six minutes; lower it here and the
+          # Monte Carlo band widens until the test stops meaning anything.
+          COVERAGE_REPS: 60
+        run: octave-cli tests/run_all_tests.m
+
+  cross_language:
+    name: orchestrated pipeline and fault paths
+    runs-on: ubuntu-latest
+    needs: [python, matlab]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: install Octave
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends octave
+      - name: clean run
+        working-directory: python
+        run: python3 run_pipeline.py
+      - name: resume serves the cache
+        working-directory: python
+        run: |
+          python3 run_pipeline.py --resume 2>&1 | tee out.txt
+          grep -q cache_hit out.txt
+      - name: an injected outage degrades visibly
+        working-directory: python
+        run: |
+          python3 run_pipeline.py --fail-fit 2>&1 | tee out.txt
+          grep -q "This run is degraded" out.txt
+      - name: a failed gate refuses to publish, with its own exit code
+        working-directory: python
+        run: |
+          set +e
+          python3 run_pipeline.py --break-gate
+          test $? -eq 3

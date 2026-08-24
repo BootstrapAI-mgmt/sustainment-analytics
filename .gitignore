@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.checkpoints/
+results/last_good.json
+octave-workspace
+*.tmp
