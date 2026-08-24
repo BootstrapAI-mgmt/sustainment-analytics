@@ -197,3 +197,15 @@ Stated here rather than left to be discovered. [VALIDATION.md](docs/VALIDATION.m
 ## License
 
 MIT — see [LICENSE](LICENSE).
+
+---
+
+## Companion repositories
+
+One of three, each mirroring a different product in the same domain. They share a design stance -- synthetic data with hidden truth, estimates scored against that truth rather than asserted, and a `failures.md` recording what went wrong and why -- but no code, so each stands alone.
+
+| repo | mirrors | what it does | stack |
+|---|---|---|---|
+| **sustainment-analytics** (this one) | | sparse censored failure records to an auditable spares buy list | MATLAB + Python |
+| [fleet-reliability-twin](https://github.com/BootstrapAI-mgmt/fleet-reliability-twin) | | gamma-process degradation, sensor-fault isolation, remaining useful life | MATLAB + Python |
+| [depot-flow-twin](https://github.com/BootstrapAI-mgmt/depot-flow-twin) | | Java discrete-event depot simulation, turnaround estimation and forecasting | Java 21 + Python |
