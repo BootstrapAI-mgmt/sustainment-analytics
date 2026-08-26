@@ -30,6 +30,23 @@ primary key, so that was a live defect and not a curiosity. The number
 pattern now refuses to start immediately after a word character, a dot, a
 comma, or a hyphen -- so a hyphenated designator is read as one token and
 a genuine minus sign, which follows a space, still is.
+
+THREE MORE HOLES A SECOND ADVERSARIAL PASS FOUND, ALL FIXED BELOW.
+
+The hyphen fix over-corrected: it made the right endpoint of every numeric
+range invisible, so "detection ran 93-97.5% of target" shipped a fabricated
+97.5 unchecked. The two cases differ in what precedes the hyphen: a DIGIT
+means a range (both endpoints are claims and both are now validated); a
+LETTER means a designator (A-1042, MIL-STD-1553), which stays exempt.
+
+Leading-dot decimals were invisible: ".999" starts at a character the
+pattern could not match, so "availability hit .999" shipped unchecked.
+
+Magnitude WORDS walked around the magnitude-notation rule: "30 thousand
+posterior samples" and "1.5M" asserted the very magnitudes the 1e5 rule
+exists to refuse, with only the mantissa validated. Word and suffix forms
+(thousand/million/billion/trillion, and k/K/M/B directly after a number)
+are now rejected like their notation twins.
 """
 
 from __future__ import annotations
@@ -42,16 +59,29 @@ from .schema import (REQUIRED_MENTIONS, collect_numbers, derived_allowances,
                      get_path)
 
 # A number may not begin immediately after a word character, a dot, a
-# comma, or a hyphen. Matches 1234, 1,234, 12.5, -3, and the digits inside
-# $1,200 and 88.7%; refuses the "2004" in "1998-2004" and the "1553" in
-# "MIL-STD-1553".
-NUMBER_RE = re.compile(r"(?<![\w.,-])-?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?")
+# comma, or a hyphen. Matches 1234, 1,234, 12.5, -3, .999, and the digits
+# inside $1,200 and 88.7%; refuses the "1553" in "MIL-STD-1553".
+NUMBER_RE = re.compile(r"(?<![\w.,-])-?(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)")
+
+# The right endpoint of a NUMERIC range ("93-97.5%"): a number directly
+# after digit-hyphen. Disjoint from NUMBER_RE by construction (its
+# lookbehind refuses this position), and it deliberately does not fire
+# after a letter-hyphen, which is a designator, not a range.
+RANGE_END_RE = re.compile(r"(?<=\d-)(?:(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?|\.\d+)")
 
 # Constructions that assert a magnitude the digits alone do not carry.
 MAGNITUDE_RE = re.compile(
     r"\d\s*(?:[eE]\s*[-+]?\d"          # 1e5, 1.2E-4
     r"|\^\s*\d"                        # 2^10
     r"|[x×*]\s*10)",              # 3x10^6, 3 × 10
+)
+
+# The same assertion made in words or suffixes: "30 thousand", "1.5M",
+# "40k". The mantissa alone would validate while the magnitude rides free.
+MAGNITUDE_WORD_RE = re.compile(
+    r"\d[\d,.]*\s*(?:thousand|million|billion|trillion)\b"
+    r"|(?<=\d)\s?[kKMB]\b(?![\w.])",
+    re.IGNORECASE,
 )
 
 
@@ -81,9 +111,10 @@ def _tolerance(token: str) -> float:
 
 
 def extract_numbers(text: str):
-    for m in NUMBER_RE.finditer(text):
-        token = m.group(0)
-        yield token, float(token.replace(",", "")), m.start()
+    for regex in (NUMBER_RE, RANGE_END_RE):
+        for m in regex.finditer(text):
+            token = m.group(0)
+            yield token, float(token.replace(",", "")), m.start()
 
 
 def _context(text: str, pos: int) -> str:
@@ -104,6 +135,14 @@ def check(text: str, result: Any, extra_allowed=()) -> List[Violation]:
             kind="magnitude_notation",
             detail=f"'{m.group(0).strip()}' asserts a magnitude the digits do "
                    f"not carry; quote the computed value instead",
+            context=_context(text, m.start()),
+        ))
+
+    for m in MAGNITUDE_WORD_RE.finditer(text):
+        violations.append(Violation(
+            kind="magnitude_notation",
+            detail=f"'{m.group(0).strip()}' asserts a magnitude in words or a "
+                   f"suffix; quote the computed value instead",
             context=_context(text, m.start()),
         ))
 

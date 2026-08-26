@@ -266,7 +266,7 @@ The convergence gate now requires every R-hat to be **finite** before comparing 
 | The greedy allocation **stopped** at the first unaffordable item instead of ranking among affordable ones | Left $3,870 of $40,000 unspent while eight part numbers still had an affordable next unit with positive return. **1.15 availability points** against the masked rule; **1.71** against an exact dynamic program. |
 | Demand assumed every installed unit was **brand new** at the start of the lead time | The demo fleet is observed for 600 hours and then sized for a 400-hour lead time. Conditional hazard from age 600 is **3.13×** the hazard from age 0; at steady state, 5.6×. The model was under-buying spares, most for the oldest units. |
 | Expected backorders were estimated by counting 4,000 Poisson samples | `EBO(s) − EBO(s+1)` is `P(D > s)`, with a sampling SE near 0.008 — comparable to the gap between adjacent candidates. Re-drawing the *same* posterior eight times moved the buy order from rank 8 onward. The docstring calls that order the explanation; an explanation that changes when nothing changed is not one. Now closed-form, validated against 100,000 samples to 0.0013. |
-| The stated direction of the renewal approximation was **backwards** | The comment claimed the cumulative hazard was "slightly optimistic" for `k > 1`. Monte Carlo says it over-states renewals by 3% / 28% / 191% at `T/λ` = 0.13 / 1.0 / 4.0 — it is *conservative*. The claim had been reasoned rather than measured. |
+| The stated direction of the renewal approximation was **backwards** — and its first correction quoted an impossible number | The comment claimed the cumulative hazard was "slightly optimistic" for `k > 1`. Recomputation says it over-states renewals by 0.8% / 28% / 191% at `T/λ` = 0.13 / 1.0 / 4.0 — it is *conservative*. The original claim had been reasoned rather than measured; the measurement that replaced it then quoted a short-row `M(T)` of 0.0257 at `H = 0.0266` from an under-sized Monte Carlo, which the one-line bound `M(T) ≥ 1 − e^(−H) = 0.02625` rules out — an impossible value that sat in the docs as "verified". The table is now recomputed by the renewal-table guard in `test_guards.m` (convolution series for the short row, seeded MC for the rest). |
 
 **The provenance gate had holes in both directions** — `tests/test_provenance.py`
 
@@ -286,7 +286,7 @@ Boolean facts now require a specific phrase that cannot be negated into existenc
 
 A parameter the key function cannot serialise is one it cannot promise to distinguish, so it now raises rather than guessing.
 
-**Retry classified by substring** — `run_pipeline.py`
+**Retry classified by substring** — `tests/test_retry_classification.py`
 
 `parse error: syntax error near line 40 of /opt/matlab/licenses/check.m` was classified **transient** because the *file path* contained "licenses", then retried three times with backoff and degraded to stale data. That is verbatim the failure `errors.py` opens by describing. Permanent patterns now take precedence, matching is word-bounded, and only the first few lines are read — a long stack trace mentions many files and the diagnosis belongs to the error, not to the directory it happened in.
 
@@ -294,7 +294,7 @@ A parameter the key function cannot serialise is one it cannot promise to distin
 
 The docstring claimed degraded results were "kept for the audit trail". The recovery run wrote over them under the same key, so `reuse_degraded=True` — the documented replay mechanism — could no longer reach the run it exists to reproduce. Degraded results now go to a sidecar.
 
-**And one flag that did nothing.** `--resume --fail-fit`, one of two documented fault-injection flags and the first thing a reviewer would type, was a complete no-op: all three stages hit a warm cache before the fault function ever ran. Fault injection is now part of the stage's identity, because a fault-injected invocation *is* a different invocation.
+**And one flag that did nothing.** `--resume --fail-fit`, one of two documented fault-injection flags and the first thing a reviewer would type, was a complete no-op: all three stages hit a warm cache before the fault function ever ran. Fault injection is now part of the stage's identity, because a fault-injected invocation *is* a different invocation — and CI runs the exact combination against a warm cache and requires the degradation banner to appear.
 
 ### What this section is for
 

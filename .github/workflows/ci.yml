@@ -38,6 +38,10 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends octave
           octave-cli --version | head -1
+      - name: save the committed artifacts before regenerating them
+        run: |
+          git show HEAD:results/analysis_result.json > /tmp/committed_analysis.json
+          git show HEAD:results/verification_output.txt > /tmp/committed_verification.txt
       - name: end-to-end demo
         working-directory: matlab
         run: octave-cli demo_pipeline.m
@@ -49,6 +53,18 @@ jobs:
           # Monte Carlo band widens until the test stops meaning anything.
           COVERAGE_REPS: 60
         run: octave-cli tests/run_all_tests.m
+      - name: fresh numbers must match the committed artifacts
+        # Re-derivation without comparison catches nothing: the whole point
+        # of committing results/ is that CI can hold the repository to them.
+        run: |
+          python3 tools/check_drift.py json /tmp/committed_analysis.json results/analysis_result.json
+          python3 tools/check_drift.py text /tmp/committed_verification.txt results/verification_output.txt
+      - name: upload fresh artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regenerated-results
+          path: results/
 
   cross_language:
     name: orchestrated pipeline and fault paths
@@ -75,6 +91,15 @@ jobs:
         working-directory: python
         run: |
           python3 run_pipeline.py --fail-fit 2>&1 | tee out.txt
+          grep -q "This run is degraded" out.txt
+      - name: the fault fires even against a warm cache (--resume --fail-fit)
+        # The documented regression was exactly this combination being a
+        # no-op: all stages hit cache before the fault function ran. Fault
+        # injection is part of the stage identity now, and this step is the
+        # regression test that says so.
+        working-directory: python
+        run: |
+          python3 run_pipeline.py --resume --fail-fit 2>&1 | tee out.txt
           grep -q "This run is degraded" out.txt
       - name: a failed gate refuses to publish, with its own exit code
         working-directory: python

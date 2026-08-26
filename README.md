@@ -29,7 +29,7 @@ A fleet of aircraft. A family of replaceable parts. The question the supply chai
 
 ## Results
 
-Measured on the runs committed in `results/`, reproduced by CI on every push.
+Measured on the runs committed in `results/`. CI re-derives both committed artifacts on every push **and compares them numerically against the committed copies** (`tools/check_drift.py`) — a re-derivation that is never reconciled with the committed claims would catch nothing.
 
 ### Ingest hardening, under deliberate fault injection
 
@@ -179,7 +179,7 @@ Stated here rather than left to be discovered. [VALIDATION.md](docs/VALIDATION.m
 
 - **σ is weakly identified with few part numbers.** At 12 groups the posterior for part-to-part spread is pulled toward its prior; recovery is clean by 40 groups. σ coverage is 0.833, below nominal, and it is the one parameter whose interval should not be taken at face value.
 - **Partial pooling's advantage over a well-implemented no-pooling baseline is not statistically established in the sparsest regime.** Better in direction at every horizon tested; at 25 paired replicates the margin is within noise. An earlier version of this repository asserted more than the evidence supported.
-- **Demand approximates expected renewals by the cumulative hazard.** Verified by Monte Carlo to be *conservative* for a wearing-out population — it over-states renewals by 3% at short horizons and more at long ones.
+- **Demand approximates expected renewals by the cumulative hazard.** Checked against a true renewal process (and regression-tested in `test_guards.m`) to be *conservative* for a wearing-out population — it over-states renewals by under 1% at the unconditional short horizon, and by far more at long ones (28% at one characteristic life, 191% at four).
 - **The budget-constrained allocation is a greedy heuristic**, not the knapsack optimum. It recovers roughly two-thirds of the gap to an exact dynamic program.
 - **Availability uses the single-indenture METRIC form**, which assumes backorders are independent across part numbers.
 - **The time-on-wing fence is a policy input, not a derived quantity.** It is the one check that cannot be decided from a record alone.

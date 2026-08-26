@@ -168,3 +168,39 @@ def test_a_degradation_reason_containing_a_digit_does_not_crash_the_run():
             "This run is degraded: solver returned HTTP 503.")
     assert enforce(text, degraded,
                    extra_allowed=numbers_in_strings(degraded["degraded_reason"]))
+
+
+def test_a_fabricated_range_endpoint_is_caught():
+    """The hyphen fix over-corrected: everything after a digit-hyphen was
+    invisible, so the right endpoint of every numeric range was a free
+    fabrication ("detection ran 93-97.5% of target" shipped an unsourced
+    97.5). A digit before the hyphen means a range, and both endpoints are
+    claims."""
+    with pytest.raises(ProvenanceError):
+        enforce("Coverage ran 93-97.5% of target.", RESULT)
+
+
+def test_a_numeric_range_with_two_sourced_endpoints_passes():
+    assert enforce("Failure ids 12-30 were reviewed.", RESULT)
+
+
+def test_a_leading_dot_decimal_is_caught():
+    """'.999' started at a character the number pattern could not match, so
+    'availability hit .999' shipped unchecked."""
+    with pytest.raises(ProvenanceError):
+        enforce("Availability hit .999 after the buy.", RESULT)
+
+
+def test_magnitude_words_and_suffixes_are_rejected():
+    """'30 thousand' and '1.5M' assert the exact magnitudes the 1e5 rule
+    refuses, with only the mantissa validated."""
+    for text in ("The sampler drew 30 thousand posterior samples.",
+                 "Roughly 1.5M records were scanned.",
+                 "A budget of 40k was assumed."):
+        with pytest.raises(ProvenanceError):
+            enforce(text, RESULT)
+
+
+def test_designators_with_letter_hyphens_stay_exempt():
+    text = "Tail A-1042 and bus MIL-STD-1553 appear with 30 failures."
+    assert enforce(text, RESULT)

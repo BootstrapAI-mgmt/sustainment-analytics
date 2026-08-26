@@ -24,13 +24,15 @@ function dem = predict_demand(fleet, fit, horizon, n_draws)
 %   Two approximations remain, stated rather than left to be discovered:
 %
 %   - Expected renewals over the window are taken as the cumulative
-%     hazard. Verified by Monte Carlo against a true renewal process at
-%     k = 1.8: the cumulative hazard OVER-states renewals by 3% at
-%     T/lambda = 0.13, 28% at 1.0, and 191% at 4.0. It is therefore
-%     CONSERVATIVE for a wearing-out population, and the error is small
-%     in the short-lead-time regime this is used in. (An earlier version
-%     of this comment claimed the opposite direction. It was wrong, and
-%     the Monte Carlo check is what caught it.)
+%     hazard. Checked against a true renewal process at k = 1.8: the
+%     cumulative hazard OVER-states renewals by 0.8% at T/lambda = 0.13,
+%     28% at 1.0, and 191% at 4.0 (test_guards.m recomputes this table).
+%     It is therefore CONSERVATIVE for a wearing-out population, and
+%     small in the short-lead-time regime this is used in. Two earlier
+%     versions of this comment were wrong in different ways -- one about
+%     the direction, one quoting an under-sampled MC value (3%) that an
+%     analytic lower bound rules out -- which is why the numbers are now
+%     regression-tested rather than remembered.
 %   - A unit that fails partway through the lead time and is replaced can
 %     in principle fail again before the window closes. Negligible while
 %     per-unit demand is well below 1, which it is here.

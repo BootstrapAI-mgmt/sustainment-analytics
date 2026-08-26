@@ -37,6 +37,32 @@ end
 fprintf('\n----------------------------------------------------\n');
 fprintf('%d of %d suites passed in %.0f s\n\n', n_pass, numel(results), toc(t0));
 
+% The committed results/verification_output.txt used to be a hand-captured
+% copy of this console output, which is how an artifact rots: nothing
+% regenerated it, so nothing could notice it no longer matched the code.
+% The suite now writes it itself; CI regenerates it on every push and
+% compares it numerically against the committed copy (tools/check_drift.py).
+% Wall time goes on a [timing] line the comparator is told to skip.
+rep = {'================ verification suite ================'};
+for i = 1:numel(results)
+    r = results{i};
+    if r.pass, tag = 'PASS'; else, tag = 'FAIL'; end
+    rep{end+1} = '';
+    rep{end+1} = sprintf('[%s] %s', tag, r.name);
+    for j = 1:numel(r.lines), rep{end+1} = r.lines{j}; end
+end
+rep{end+1} = '';
+rep{end+1} = '----------------------------------------------------';
+rep{end+1} = sprintf('%d of %d suites passed', n_pass, numel(results));
+rep{end+1} = sprintf('[timing] %.0f s on this machine (excluded from comparison)', toc(t0));
+outdir = fullfile(fileparts(fileparts(here)), 'results');
+if ~exist(outdir, 'dir'), mkdir(outdir); end
+vf = fullfile(outdir, 'verification_output.txt');
+fid = fopen(vf, 'w');
+fprintf(fid, '%s\n', rep{:});
+fclose(fid);
+fprintf('written %s\n', vf);
+
 % exit() quits the whole application in MATLAB, destroying the user's
 % workspace on a test failure. Only exit when running headless, where a
 % non-zero status is the point (CI reads it).

@@ -79,15 +79,15 @@ The demo fleet is observed for 600 hours and then asked for a 400-hour lead time
 
 Two approximations remain, stated rather than left to be discovered.
 
-**Expected renewals are taken as the cumulative hazard.** Checked by Monte Carlo against a true renewal process at `k = 1.8`:
+**Expected renewals are taken as the cumulative hazard.** Checked against a true renewal process at `k = 1.8` — the short row by convolution series (exact to ~4e-7), the longer rows by Monte Carlo (4M and 2M paths, ratio standard errors under 0.001):
 
 | `T/lambda` | H(T) used here | true M(T) | ratio |
 |---|---|---|---|
-| 0.13 | 0.0266 | 0.0257 | 1.034 |
-| 1.00 | 1.0000 | 0.7821 | 1.279 |
+| 0.133 | 0.0266 | 0.0264 | 1.008 |
+| 1.00 | 1.0000 | 0.7832 | 1.277 |
 | 4.00 | 12.126 | 4.163 | 2.913 |
 
-So the cumulative hazard **over**-states renewals for an increasing-failure-rate population: the approximation is *conservative*, and small in the short-lead-time regime it is used in. An earlier version of this document claimed the opposite direction, on intuition rather than measurement. The Monte Carlo check is what caught it, and it is a fair reminder that a stated approximation is only as good as the test behind it.
+So the cumulative hazard **over**-states renewals for an increasing-failure-rate population: the approximation is *conservative*, and small in the short-lead-time regime it is used in. Two earlier versions of this table were wrong in two different ways: the first claimed the opposite *direction*, on intuition rather than measurement; the second quoted a short-row M(T) of 0.0257 from an under-sized Monte Carlo — an **impossible** value, since any renewal function satisfies `M(T) ≥ F(T) = 1 − exp(−H) = 0.02625`, and the one-line bound that falsifies it went unchecked. The table is now recomputed by a named regression test (`test_guards.m`, "renewal table"), which is the only reason to believe it will stay correct.
 
 **Re-replacement within the window is ignored.** A unit that fails partway through the lead time and is replaced could in principle fail again before the window closes. Negligible while per-unit demand is well below 1, which it is here.
 

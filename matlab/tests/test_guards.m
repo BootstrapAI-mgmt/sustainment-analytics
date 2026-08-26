@@ -60,6 +60,46 @@ function r = test_guards()
     ok = abs(m - 5) < 1e-9;
     r = add(r, ok, sprintf('  pctile ignores NaN (median %.1f, expect 5)', m));
 
+    % --- the renewal table must be recomputed, not remembered ---------
+    % An earlier METHOD.md quoted M(T) = 0.0257 at H(T) = 0.0266 -- an
+    % impossible number, since every renewal function satisfies
+    % M(T) >= F(T) = 1 - exp(-H(T)) = 0.02625 -- and nothing recomputed
+    % the table, so it sat in the docs as "verified by Monte Carlo".
+    % The short row is checked here against the two-term convolution
+    % series (the third term is ~4e-7); the longer rows by seeded MC.
+    kk = 1.8; T1 = 0.0266 ^ (1 / kk); H1 = T1 ^ kk;
+    u = linspace(0, T1, 20001);
+    Fw = @(t) 1 - exp(-max(t, 0) .^ kk);
+    fw = @(t) kk * max(t, eps) .^ (kk - 1) .* exp(-t .^ kk);
+    F2 = trapz(u, Fw(T1 - u) .* fw(u));
+    M1 = Fw(T1) + F2;
+    ratio1 = H1 / M1;
+    ok = M1 >= Fw(T1) && abs(ratio1 - 1.008) < 0.002;
+    r = add(r, ok, sprintf(['  renewal table, short row: H/M = %.4f by convolution series ' ...
+                            '(docs say 1.008; the old 1.034 required an impossible M)'], ratio1));
+
+    set_seed(9);
+    ok = true; msg = '';
+    for spec = [struct('T', 1, 'cols', 12, 'want', 1.277, 'tol', 0.015), ...
+                struct('T', 4, 'cols', 22, 'want', 2.913, 'tol', 0.02)]
+        reps = 300000;
+        x = (-log(1 - rand(reps, spec.cols))) .^ (1 / kk);
+        t = cumsum(x, 2);
+        ok = ok && all(t(:, end) > spec.T);    % enough columns to count every renewal
+        M = mean(sum(t <= spec.T, 2));
+        ratio = (spec.T ^ kk) / M;
+        ok = ok && ratio >= 1 && abs(ratio - spec.want) < spec.tol;
+        msg = sprintf('%s  T/lam=%g: %.3f', msg, spec.T, ratio);
+    end
+    r = add(r, ok, ['  renewal approximation is conservative and matches the table:' msg]);
+
+    % --- the age term's documented ratios, likewise recomputed --------
+    hr = @(a) ((a + 400) .^ kk - a .^ kk) / 400 ^ kk;
+    ok = abs(hr(600) - 3.13) < 0.01 && abs(hr(2400) - 8.05) < 0.01 ...
+         && hr(2400) > hr(600) && hr(600) > 1;
+    r = add(r, ok, sprintf(['  age-conditional hazard ratios match METHOD.md ' ...
+                            '(600h: %.2f, 2400h: %.2f)'], hr(600), hr(2400)));
+
     % --- the closed-form EBO must match what it replaced --------------
     % expected_backorders now computes E[(D-s)^+] analytically instead of
     % counting samples. That is only an improvement if it agrees with the
