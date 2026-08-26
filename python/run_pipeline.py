@@ -198,6 +198,14 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
+    except PermanentError as exc:
+        # A fresh clone has no last-good checkpoint, so --fail-fit has
+        # nothing to degrade to. That is a refusal, not a crash: say what
+        # is missing and how to create it instead of dumping a traceback.
+        print(f"REFUSED: {exc}")
+        print("(no degraded fallback exists yet; run a clean `python run_pipeline.py` "
+              "first, then the fault flags demonstrate recovery against its checkpoint)")
+        sys.exit(4)
     except GateFailure as exc:
         # The designed refusal. Distinct exit code so a scheduler can tell
         # "declined to publish" apart from "fell over", which are very

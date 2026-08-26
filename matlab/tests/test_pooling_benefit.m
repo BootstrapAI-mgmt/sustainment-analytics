@@ -18,7 +18,7 @@ function r = test_pooling_benefit()
 %
 %   v1 scored only the parts where the no-pooling MLE existed. That
 %   conditions on the parts with the most data and silently drops the
-%   ~40% of part numbers where the baseline has nothing to say -- the
+%   ~51% of part numbers where the baseline has nothing to say -- the
 %   exact cases pooling exists to handle. Biased in the baseline's favour.
 %
 %   v2 fixed the selection bias but used 5-6 replicates. At that count
@@ -72,6 +72,11 @@ function r = test_pooling_benefit()
             fit = fit_hierarchical_weibull(fleet, struct('n_burn', 1200, ...
                 'n_keep', 1200, 'n_chains', 2, 'seed', 31 + rep));
 
+            % Disclosed dependency: every estimator here, the baselines
+            % included, borrows the hierarchical fit's shape k -- a per-part
+            % k is not estimable at these failure counts, so the comparison
+            % isolates the pooling of the SCALE and is generous to the
+            % baselines by construction.
             N = fleet.n_parts; k = mean(fit.pooled.k);
             truth = log(fleet.truth.lambda);
 
@@ -95,7 +100,8 @@ function r = test_pooling_benefit()
         t_vs_comp(h) = mean(dc) / (std(dc) / sqrt(R));
 
         dir_ok = dir_ok && mean(rp) <= mean(rn) && mean(rp) <= mean(rc);
-        beats_complete = beats_complete && t_vs_comp(h) > 2;
+        % two-sided 5% critical value at df = 24 (25 paired replicates)
+        beats_complete = beats_complete && t_vs_comp(h) >= 2.064;
 
         r.lines{end+1} = sprintf('    %-8d %8.0f %4d/%-3d %9.4f %9.4f %9.4f', ...
             horizons(h), n_fail, n_nomle, 15 * R, mean(rp), mean(rn), mean(rc));
@@ -108,7 +114,7 @@ function r = test_pooling_benefit()
 
     r.pass = dir_ok && beats_complete;
     r.lines{end+1} = sprintf('  partial pooling best in point estimate everywhere: %s', tf(dir_ok));
-    r.lines{end+1} = sprintf('  advantage over complete pooling is significant (t>2): %s', tf(beats_complete));
+    r.lines{end+1} = sprintf('  advantage over complete pooling is significant (|t| >= 2.064, the two-sided 5%% point at df=24): %s', tf(beats_complete));
     r.lines{end+1} = '  advantage over no-pooling is directional but NOT asserted as';
     r.lines{end+1} = '  significant in the sparse regime -- see the note in this file.';
 end

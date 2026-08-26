@@ -60,6 +60,22 @@ function r = test_guards()
     ok = abs(m - 5) < 1e-9;
     r = add(r, ok, sprintf('  pctile ignores NaN (median %.1f, expect 5)', m));
 
+    % --- the ninth reason code shipped with zero coverage -------------
+    % The fault harness injects eight corruption classes and none of them
+    % is a bad removal code, so Q_BAD_CODE was reachable only by data
+    % nothing generated. One crafted record (code 9 among nine valid
+    % failures, below the quarantine threshold) pins the path.
+    wo = (1:10)'; pn = ones(10, 1); sn = (101:110)';
+    ins = zeros(10, 1); rem10 = 300 * ones(10, 1); cod = ones(10, 1);
+    reph = NaN(10, 1); cod(10) = 9;
+    raw10 = struct('work_order', wo, 'part_number', pn, 'serial', sn, ...
+                   'install_hr', ins, 'removal_hr', rem10, 'removal_code', cod, ...
+                   'repair_hr', reph, 'cutoff_hr', 600, 'n_parts', 3);
+    [~, rep10] = ingest_maintenance_records(raw10);
+    ok = isfield(rep10.reasons, 'Q_BAD_CODE') && rep10.reasons.Q_BAD_CODE == 1 ...
+         && rep10.n_quarantined == 1;
+    r = add(r, ok, '  an unknown removal code is quarantined as Q_BAD_CODE, not accepted');
+
     % --- the renewal table must be recomputed, not remembered ---------
     % An earlier METHOD.md quoted M(T) = 0.0257 at H(T) = 0.0266 -- an
     % impossible number, since every renewal function satisfies

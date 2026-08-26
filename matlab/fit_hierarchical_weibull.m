@@ -25,9 +25,13 @@ function fit = fit_hierarchical_weibull(fleet, opts)
 %              a Metropolis rejection on it.
 %     k, sigma scalar random-walk Metropolis on the log scale.
 %
-%   Proposal scales adapt during burn-in toward 0.35 acceptance
-%   (Roberts & Rosenthal 2001) and are then FROZEN, so the retained draws
-%   come from a time-homogeneous chain and remain a valid posterior sample.
+%   Proposal scales adapt during burn-in toward 0.35 acceptance -- a
+%   chosen compromise between the 1-D random-walk optimum (~0.44) and the
+%   high-dimensional limit (0.234) of Roberts & Rosenthal (2001), which
+%   contains neither 0.35 nor a rule for this blocked sampler; the
+%   convergence gate checks the ACHIEVED rates -- and are then FROZEN, so
+%   the retained draws come from a time-homogeneous chain and remain a
+%   valid posterior sample.
 
     if nargin < 2, opts = struct(); end
     opts = set_defaults(opts);

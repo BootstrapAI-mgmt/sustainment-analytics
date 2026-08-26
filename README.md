@@ -64,7 +64,7 @@ The naive path is not reading corrupted data. Those removal records are perfectl
 | Partial vs no pooling | better in direction, **not significant when sparsest** — reported, not asserted |
 | Closed-form expected backorders | matches a 100,000-sample Monte Carlo to **0.0013** |
 
-Coverage is the one that matters. Recovering the truth once proves very little: a badly calibrated model with absurdly wide intervals passes that test every time. Calibration is a frequency property, so it is measured by repetition — and a 90% interval that contains the truth 88.7% of the time means the uncertainty attached to a spares recommendation can be taken at face value.
+Coverage is the one that matters. Recovering the truth once proves very little: a badly calibrated model with absurdly wide intervals passes that test every time. Calibration is a frequency property, so it is measured by repetition — and a 90% interval that contains the truth 88.7% of the time means the uncertainty attached to a spares recommendation can be taken at face value. (One scope note: the study's design is 15 parts × 16 units at an 800-hour horizon; the demo fleet — 12 parts, 600 hours — is sparser, so 0.887 is evidence for the method's calibration in that neighbourhood, not a measured property of the demo fleet itself.)
 
 ### Decision output
 

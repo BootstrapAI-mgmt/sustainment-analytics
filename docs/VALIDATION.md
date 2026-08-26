@@ -148,7 +148,7 @@ Three estimators scored as RMSE in `log lambda` over **all** parts, paired acros
 
 ### How this test was wrong twice
 
-**v1 was biased in the baseline's favour.** It scored only the parts where the no-pooling MLE existed. That conditions on the parts with the *most* data and silently drops the ~47% of part numbers where the baseline has nothing to say — the exact cases pooling exists to handle. The apparent advantage of pooling shrank to 2%, not because pooling stopped helping but because the comparison had quietly excluded the cases it helps most.
+**v1 was biased in the baseline's favour.** It scored only the parts where the no-pooling MLE existed. That conditions on the parts with the *most* data and silently drops the ~51% (190 of 375 at the short horizon) of part numbers where the baseline has nothing to say — the exact cases pooling exists to handle. The apparent advantage of pooling shrank to 2%, not because pooling stopped helping but because the comparison had quietly excluded the cases it helps most.
 
 **v2 was underpowered, and produced a finding that did not replicate.** With the selection bias fixed but only 5–6 replicates, one run showed partial pooling *losing badly* in the sparsest regime (0.6697 vs 0.5268). A mechanism was available and fitted perfectly: with few failures, `sigma` is weakly identified, is pulled up by a diffuse prior, the model shrinks too little, and per-part estimates scatter further than the family value would have. Section 5 above independently confirms that `sigma` really does behave that way.
 
