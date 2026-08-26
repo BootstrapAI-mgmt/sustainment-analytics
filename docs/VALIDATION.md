@@ -5,8 +5,8 @@ What was checked, what the numbers were, and — the part that is usually missin
 Reproduce with:
 
 ```bash
-cd matlab && octave-cli tests/run_all_tests.m     # ~6 min, 6 suites
-cd python && python3 -m pytest tests/ -q          # ~1 s, 40 tests
+cd matlab && octave-cli tests/run_all_tests.m     # ~10 min, 8 suites
+cd python && python3 -m pytest tests/ -q          # <1 s, 50 tests
 ```
 
 CI re-runs all of it on every push, including the demo and the three fault paths.
@@ -160,7 +160,7 @@ The mechanism was real. The finding was noise. At a different replicate count th
 
 ---
 
-## 7. Pipeline hardening (40 Python tests)
+## 7. Pipeline hardening (50 Python tests)
 
 | Group | What is asserted |
 |---|---|
@@ -180,7 +180,7 @@ Three of these deserve naming.
 
 ---
 
-## 8. Provenance enforcement (14 tests)
+## 8. Provenance enforcement (19 tests)
 
 Written as attacks: each is a way a fluent, confident narrative could carry a number nobody computed.
 

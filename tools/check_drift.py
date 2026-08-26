@@ -61,7 +61,7 @@ NUM = re.compile(r"-?(?:\d[\d,]*\.\d+(?:[eE][+-]?\d+)?|\d[\d,]*|\.\d+)")
 
 def text_lines(path):
     return [ln.rstrip() for ln in open(path, encoding="utf-8")
-            if "[timing]" not in ln]
+            if "[timing]" not in ln and "[env]" not in ln]
 
 
 def compare_text(committed, fresh):

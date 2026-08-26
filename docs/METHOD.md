@@ -79,7 +79,7 @@ The demo fleet is observed for 600 hours and then asked for a 400-hour lead time
 
 Two approximations remain, stated rather than left to be discovered.
 
-**Expected renewals are taken as the cumulative hazard.** Checked against a true renewal process at `k = 1.8` — the short row by convolution series (exact to ~4e-7), the longer rows by Monte Carlo (4M and 2M paths, ratio standard errors under 0.001):
+**Expected renewals are taken as the cumulative hazard.** Checked against a true renewal process at `k = 1.8`. Provenance of each row: the short row's M comes from the convolution series (exact to ~4e-7) that `test_guards.m` regenerates on every run; the longer rows' extra digits come from a one-off 4M/2M-path Monte Carlo of the same estimator, and the in-repo guard re-verifies them at 300k paths on every run (printing 1.275 / 2.912 against tolerances ±0.015 / ±0.02):
 
 | `T/lambda` | H(T) used here | true M(T) | ratio |
 |---|---|---|---|

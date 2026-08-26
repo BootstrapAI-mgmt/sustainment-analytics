@@ -57,6 +57,12 @@ rep{end+1} = '';
 rep{end+1} = '----------------------------------------------------';
 rep{end+1} = sprintf('%d of %d suites passed', n_pass, numel(results));
 rep{end+1} = sprintf('[timing] %.0f s on this machine (excluded from comparison)', toc(t0));
+if exist('OCTAVE_VERSION', 'builtin')
+    interp = sprintf('octave %s', OCTAVE_VERSION());
+else
+    interp = sprintf('matlab %s', version());
+end
+rep{end+1} = sprintf('[env] %s on %s (excluded from comparison)', interp, computer());
 outdir = fullfile(fileparts(fileparts(here)), 'results');
 if ~exist(outdir, 'dir'), mkdir(outdir); end
 vf = fullfile(outdir, 'verification_output.txt');
