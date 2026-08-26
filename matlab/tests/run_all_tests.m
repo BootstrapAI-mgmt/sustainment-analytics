@@ -22,6 +22,8 @@ results{end+1} = test_samplers();
 results{end+1} = test_guards();
 results{end+1} = test_ingest_hardening();
 results{end+1} = test_parameter_recovery();
+results{end+1} = test_allocation_optimality();
+results{end+1} = test_sigma_identification();
 results{end+1} = test_pooling_benefit();
 results{end+1} = test_interval_coverage(reps);
 

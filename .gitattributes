@@ -1,0 +1,8 @@
+# Line endings are part of reproducibility: CI diffs both committed
+# artifacts numerically on every push.
+* text=auto
+*.py text eol=lf
+*.m text eol=lf
+*.md text eol=lf
+*.yml text eol=lf
+*.json text eol=lf

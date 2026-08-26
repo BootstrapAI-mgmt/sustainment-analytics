@@ -44,15 +44,15 @@ Proposal scales adapt toward 0.35 acceptance during burn-in (Roberts & Rosenthal
 
 The explanation a sustainment analyst needs is not a feature-importance score. It is: *how much of this number came from this part, and how much was borrowed?* That determines whether the estimate will move when the next failure is reported.
 
-The borrowed fraction is the classical shrinkage factor:
+The borrowed fraction is the precision-weighted shrinkage factor, with the part's precision taken as the **observed Fisher information about `log λ_i` under right censoring**, evaluated at the posterior scale:
 
 ```
-tau_data_i = k^2 * d_i          d_i = observed failures for part i
+tau_data_i = k^2 * sum_j (t_ij / lambda_post_i)^k     (every unit j, survivors included)
 tau_family = 1 / sigma^2
 w_i        = tau_family / (tau_family + tau_data_i)
 ```
 
-`w_i` is monotone in the failure count, lies in `[0, 1]` by construction, and equals exactly 1 for a part that has never failed — the honest answer for a part with no standalone evidence.
+Under censoring, exposure *is* evidence — that is the entire reason survivors are modelled rather than dropped — and `sum_j z_ij` is the model's expected failure count given that exposure. An earlier version plugged in the *observed* failure count `d_i`, which zeroes the survivors' contribution: a never-failed part with 24 units and hundreds of hours each reported "100% borrowed" while its own posterior sat visibly tighter than the family prior, contradicting the number on the same screen. (The two definitions coincide at the part's own MLE, where the censored score equation gives `sum_j z_ij = d_i`; they part company exactly where attribution matters most — the zero- and few-failure parts.) `w_i` falls as evidence — failures *or* exposure — grows, lies in `(0, 1]`, and reaches 1 only for a part with no exposure at all. On the committed demo the two never-failed parts now report 65% and 63% borrowed rather than 100%.
 
 > **An earlier definition failed.** The first version measured how far the posterior sat between the part's own MLE and the family mean. Under 90%+ censoring the marginal posterior for a part's scale is strongly right-skewed, so its summary can fall *outside* the interval spanned by those two anchors. The weight had to be clipped, and the clipped weights were not monotone in the failure count — a part with 9 failures and a part with 1 could report the same borrowed fraction. The empirical anchors are still reported for transparency; they are no longer what the weight is computed from.
 
@@ -120,11 +120,11 @@ A = prod_i ( 1 - EBO_i(s_i) / (Z * Q_i) ) ^ Q_i
 
 for `Z` aircraft carrying `Q_i` units of part `i` each. It assumes backorders land independently across part numbers, which is what permits greedy optimisation rather than a joint solve.
 
-`marginal_spares_allocation.m` repeatedly buys the single spare that removes the most expected backorders per dollar, **ranked among the candidates it can currently afford**. Because `EBO` is convex and decreasing in stock level, the unconstrained greedy order is the efficient frontier: every prefix of the buy list is the best allocation available at its own cumulative cost, so one pass yields the whole cost/availability curve. (That prefix-optimality claim was checked against an exact dynamic program at every prefix cost and holds exactly.)
+`marginal_spares_allocation.m` repeatedly buys the single spare that removes the most expected backorders per dollar, **ranked among the candidates it can currently afford**. Because `EBO` is convex and decreasing in stock level, one pass yields the whole cost/EBO curve. How close that curve runs to optimal is *measured*: `tests/test_allocation_optimality.m` implements an exact budget-indexed dynamic program for the EBO objective and, on its fixed demo-scale configuration, finds every greedy prefix within **~2×10⁻³ expected backorders** (of totals near 20) of the DP at its own spend. An earlier version of this paragraph claimed the prefix optimality "holds exactly", citing a DP that existed nowhere in the repository; writing the DP is what *disproved* the "exactly" — with unequal integer costs the greedy can sit a hair above the optimum — and the claim is now the measured bound. Availability weights each part's backorders differently, so the availability-optimal allocation is a different, combinatorial problem that neither the greedy nor this DP solves.
 
-Affordability is a **mask, not a stop**. An earlier version broke out of the loop the first time the best-ranked candidate exceeded the remaining budget, which is wrong and measurably so: on the demo configuration it left $3,870 of $40,000 unspent while eight part numbers still had an affordable next unit with positive marginal return, costing 1.15 availability points against the masked rule and 1.71 against an exact DP.
+Affordability is a **mask, not a stop**. An earlier version broke out of the loop the first time the best-ranked candidate exceeded the remaining budget — leaving money unspent while cheaper parts still had affordable units with positive return. Re-measured by the same named test: on its $40,000 configuration the stop rule strands $1,750 and 0.31 expected backorders (about half an availability point) against the masked rule. Earlier versions of this document quoted a different configuration's numbers from memory; only the test's regenerating output is quoted now.
 
-The budget-constrained result is therefore a greedy heuristic for what is formally a knapsack, recovering roughly two-thirds of the gap to the DP optimum. `alloc.stop_reason` records why the list ended — `budget`, `stock_cap`, or `no_gain` — so those three are never confused for one another.
+The budget-constrained result is a greedy heuristic for what is formally a knapsack — measured at 0.002 expected backorders (under 0.01%) above the exact DP at the tested budget. `alloc.stop_reason` records why the list ended — `budget`, `stock_cap`, or `no_gain` — so those three are never confused for one another.
 
 **Why greedy rather than an integer program.** Not speed. The *order* of the buy list is itself the explanation. "This part was bought 7th because at that point it returned 0.00184 backorders removed per dollar, against 0.00156 for the next candidate" is an audit trail a supply chain officer can challenge on its merits. A solver returning an optimal vector supports no such conversation — and in a setting where the recommendation has to be defended rather than merely computed, that difference is the whole point.
 

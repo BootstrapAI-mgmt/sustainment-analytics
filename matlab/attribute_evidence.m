@@ -8,20 +8,33 @@ function attr = attribute_evidence(fleet, fit)
 %   move when the next failure is reported, and whether it is safe to act
 %   on now.
 %
-%   The borrowed fraction is the classical shrinkage factor (Gelman et
-%   al., BDA3 ch. 5). On the log scale the hierarchical posterior for a
-%   part is, to a Gaussian approximation, a precision-weighted blend of
-%   its own data and the family distribution:
+%   The borrowed fraction is the precision-weighted shrinkage factor
+%   (Gelman et al., BDA3 ch. 5), with the part's precision taken as the
+%   OBSERVED FISHER INFORMATION about log(lambda_i) under right
+%   censoring, evaluated at the posterior scale:
 %
-%       tau_data_i = k^2 * d_i        d_i = observed failures for part i
+%       tau_data_i = k^2 * sum_j (t_ij / lambda_post_i)^k    (all units j)
 %       tau_family = 1 / sigma^2
 %       w_i        = tau_family / (tau_family + tau_data_i)
 %
-%   w_i is the fraction of the estimate carried by the family. It is
-%   monotone in the failure count -- more of a part's own evidence always
-%   means less borrowing -- lies in [0, 1] by construction, and equals
-%   exactly 1 when a part has never failed, which is the honest answer
-%   for a part with no standalone evidence at all.
+%   The sum runs over EVERY unit of the part, survivors included: under
+%   censoring, exposure IS evidence -- that is the entire reason censored
+%   units are modelled rather than dropped -- and sum_j z_ij is the
+%   model's expected failure count given that exposure. An earlier
+%   version plugged in the OBSERVED failure count d_i instead, which
+%   zeroes the survivors' contribution; a never-failed part with 24 units
+%   and hundreds of hours each reported "100% borrowed" while its own
+%   posterior sat visibly tighter than the family prior -- the number and
+%   the interval contradicted each other on the same screen. (At the
+%   part's own MLE the two definitions coincide, since the censored MLE
+%   solves sum_j z_ij = d_i; they part company exactly where attribution
+%   matters most, the zero- and few-failure parts whose posterior is not
+%   at their own MLE.)
+%
+%   w_i is the fraction of the estimate carried by the family. It falls
+%   as a part's own evidence -- failures or exposure -- grows, lies in
+%   (0, 1] by construction, and reaches 1 only for a part with no
+%   exposure at all.
 %
 %   An EARLIER VERSION of this function defined w geometrically, as how
 %   far the posterior sat between the part's own MLE and the family mean.
@@ -47,7 +60,11 @@ function attr = attribute_evidence(fleet, fit)
                                            fleet.part_id, N, k_hat);
 
     d          = fleet.n_failures;
-    tau_data   = k_hat^2 * d;
+    tau_data   = zeros(N, 1);
+    for i = 1:N
+        ti = fleet.t(fleet.part_id == i);
+        tau_data(i) = k_hat^2 * sum((ti ./ lam_post(i)) .^ k_hat);
+    end
     tau_family = 1 / sigma_hat^2;
     w          = tau_family ./ (tau_family + tau_data);
 

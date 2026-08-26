@@ -56,6 +56,18 @@
   sigma  truth   0.450  post   0.583  90% CI [  0.390   0.827]  PASS
   lambda_i: 27 of 30 truths inside their 90% CI (90%)  PASS
 
+[PASS] allocation: greedy vs exact DP (EBO objective)
+  every greedy prefix is within 1.7e-03 backorders of the exact DP at its own spend (40 steps; exact equality is not guaranteed for unequal integer costs)  PASS
+  EBO at $40000: exact DP 20.358 <= masked greedy 20.360 <= old stop-rule 20.667 (stop-rule left $1750 unspent)  PASS
+  availability: old stop-rule 0.362 | masked greedy 0.367 | EBO-DP allocation 0.367 (printed for scale; availability-optimal not computed)  PASS
+
+[PASS] sigma identification vs number of groups
+   12 parts, 8 replicate fleets: sigma-hat 0.520 +/- 0.101 (truth 0.45), mean 90% CI width 0.737
+   40 parts, 8 replicate fleets: sigma-hat 0.433 +/- 0.050 (truth 0.45), mean 90% CI width 0.335
+  identification improves with groups: |bias| 0.070 at 12 parts vs 0.017 at 40 (2-SE slack 0.225)  PASS
+  the 12-part interval is wider, as a weakly identified parameter's should be  PASS
+  12-part bias 0.070 within 3 SE + 0.10 of zero -- the limit is WIDTH and prior pull, not a large systematic bias  PASS
+
 [PASS] partial pooling: paired estimator comparison
   25 paired replicates per horizon
     horizon     fails   no-MLE   partial      none  complete
@@ -78,5 +90,5 @@
   sigma coverage     0.833   (see docs/VALIDATION.md)
 
 ----------------------------------------------------
-6 of 6 suites passed
-[timing] 420 s on this machine (excluded from comparison)
+8 of 8 suites passed
+[timing] 494 s on this machine (excluded from comparison)

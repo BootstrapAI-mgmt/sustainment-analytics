@@ -58,7 +58,7 @@ The naive path is not reading corrupted data. Those removal records are perfectl
 | Check | Result |
 |---|---|
 | Credible interval coverage (60 replicate fleets, 900 intervals) | **0.887** against a nominal 0.90, band [0.856, 0.944] |
-| Sampler convergence | split R-hat < 1.03 across 4 overdispersed chains |
+| Sampler convergence | split R-hat max **1.011** across 4 overdispersed chains (committed in `analysis_result.json`) |
 | Parameter recovery | truth inside the 90% interval for every hyperparameter |
 | Partial vs complete pooling (25 paired replicates) | partial wins, **t = +2.30 / +3.19** |
 | Partial vs no pooling | better in direction, **not significant when sparsest** — reported, not asserted |
@@ -68,9 +68,9 @@ Coverage is the one that matters. Recovering the truth once proves very little: 
 
 ### Decision output
 
-From the committed demo run: **fleet availability 0.135 → 0.821 for $199,860** of a $200,000 budget, as a ranked buy list where each purchase records the expected backorders it removed and the availability after it. Because the greedy order *is* the efficient frontier, the same pass answers the question a programme office actually asks: **90% availability would cost $283,960.**
+From the committed demo run: **fleet availability 0.135 → 0.821 for $199,860** of a $200,000 budget, as a ranked buy list where each purchase records the expected backorders it removed and the availability after it. Because every prefix of the buy list is the best spend available at its own cost (to within the ~2×10⁻³-backorder bound measured against the exact DP), the same pass answers the question a programme office actually asks: **90% availability would cost $283,960.** (The demo's zero-spares starting point is a convention, not a scenario — no fielded fleet starts at 13.5% availability; it makes the whole frontier visible in one run.)
 
-In that run the ingest accepted 391 of 441 records and quarantined 50 (11.3%), and the naive path's failure count came out **+450%** against truth — a worse margin than the test fleet above, because this fleet has fewer real failures relative to non-failure removals. The sparser the failures, the more the naive assumption costs.
+In that run the ingest accepted 391 of 441 records and quarantined 50 (11.3%), and the naive path's failure count came out **+450%** against truth (165 vs 30; the hardened path 27, −10% — all committed in `results/analysis_result.json` `meta`) — a worse margin than the test fleet above, because this fleet has fewer real failures relative to non-failure removals. The sparser the failures, the more the naive assumption costs.
 
 ---
 
@@ -79,14 +79,14 @@ In that run the ingest accepted 391 of 441 records and quarantined 50 (11.3%), a
 No toolboxes, no licences, no external packages. Runs on GNU Octave or MATLAB, and on a bare Python 3 install.
 
 ```bash
-# numerics + verification suite  (~6 minutes, 6 suites)
+# numerics + verification suite  (~8 minutes, 8 suites)
 cd matlab
 octave-cli demo_pipeline.m
 octave-cli tests/run_all_tests.m
 
 # orchestration + narrative
 cd ../python
-python3 -m pytest tests/ -q            # 40 tests
+python3 -m pytest tests/ -q            # 50 tests
 python3 run_pipeline.py                # full cross-language run
 
 # the failure paths, on demand
@@ -133,10 +133,10 @@ raw maintenance records
 | Path | What lives there |
 |---|---|
 | `matlab/` | Numerics: ingest, hierarchical fit, attribution, demand, allocation |
-| `matlab/tests/` | 6 suites — fault injection, guards, recovery, coverage, estimator comparison |
+| `matlab/tests/` | 8 suites — fault injection, guards, recovery, allocation-vs-DP, sigma identification, coverage, estimator comparison |
 | `python/pipeline/` | Orchestration: manifest, runner, error taxonomy, fault harness |
 | `python/explain/` | Result contract, narration, numeric provenance validator |
-| `python/tests/` | 40 tests — 26 hardening, 14 provenance |
+| `python/tests/` | 50 tests — 26 hardening, 19 provenance, 5 retry classification |
 | `docs/` | [METHOD.md](docs/METHOD.md) — the model. [VALIDATION.md](docs/VALIDATION.md) — what was checked, and what broke |
 
 ---
@@ -171,6 +171,8 @@ The validator derives its tolerance from how each number was *written*, so prose
 
 Hallucination-freedom is not a property of a model, and no amount of prompting makes it one. It is a property of a pipeline that refuses to pass an unverifiable number through, whatever produced it.
 
+One asterisk, carried honestly: the validator checks **values, not bindings**. "The shape parameter is 1.03" would pass against a result whose shape is 1.7 if 1.03 happens to round to some *other* field (`schema.py` says the same in its own words: accuracy is not machine-checkable; provenance is). And small integers trace almost by default, since ids, ranks, and quantities densely cover them. What the gate guarantees is that every figure exists somewhere in the computed result — the mis-*attribution* of a true figure is caught by the template's fixed sentence structure, not by the validator.
+
 ---
 
 ## Known limits
@@ -180,7 +182,7 @@ Stated here rather than left to be discovered. [VALIDATION.md](docs/VALIDATION.m
 - **σ is weakly identified with few part numbers.** At 12 groups the posterior for part-to-part spread is pulled toward its prior; recovery is clean by 40 groups. σ coverage is 0.833, below nominal, and it is the one parameter whose interval should not be taken at face value.
 - **Partial pooling's advantage over a well-implemented no-pooling baseline is not statistically established in the sparsest regime.** Better in direction at every horizon tested; at 25 paired replicates the margin is within noise. An earlier version of this repository asserted more than the evidence supported.
 - **Demand approximates expected renewals by the cumulative hazard.** Checked against a true renewal process (and regression-tested in `test_guards.m`) to be *conservative* for a wearing-out population — it over-states renewals by under 1% at the unconditional short horizon, and by far more at long ones (28% at one characteristic life, 191% at four).
-- **The budget-constrained allocation is a greedy heuristic**, not the knapsack optimum. It recovers roughly two-thirds of the gap to an exact dynamic program.
+- **The budget-constrained allocation is a greedy heuristic**, not the knapsack optimum. Measured against an exact dynamic program (`tests/test_allocation_optimality.m`, regenerated on every run): every prefix sits within ~2×10⁻³ expected backorders of the DP at its own spend, and the full-budget gap on the tested configuration is 0.002 backorders (under 0.01%) — small, but *not* exactly zero, which an earlier version of this repository claimed.
 - **Availability uses the single-indenture METRIC form**, which assumes backorders are independent across part numbers.
 - **The time-on-wing fence is a policy input, not a derived quantity.** It is the one check that cannot be decided from a record alone.
 
@@ -202,7 +204,7 @@ MIT — see [LICENSE](LICENSE).
 
 ## Companion repositories
 
-One of three, each mirroring a different product in the same domain. They share a design stance -- synthetic data with hidden truth, estimates scored against that truth rather than asserted, and a `failures.md` recording what went wrong and why -- but no code, so each stands alone.
+One of three, each mirroring a different product in the same domain. They share a design stance -- synthetic data with hidden truth, estimates scored against that truth rather than asserted, and a failure log recording what went wrong and why (`docs/VALIDATION.md` §9 here; `results/failures.md` in the two twins) -- but no code, so each stands alone.
 
 | repo | mirrors | what it does | stack |
 |---|---|---|---|

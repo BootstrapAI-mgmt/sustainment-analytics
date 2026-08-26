@@ -89,7 +89,7 @@ The first version of the fence produced ~11 false positives per run — early no
 | `sigma` | 0.450 | 0.583 | [0.390, 0.827] | yes |
 | `lambda_i` | — | — | — | 27 of 30 (90%) |
 
-Split R-hat across 4 overdispersed chains: `k` 1.026, `mu` 1.020, `sigma` 1.015, max `lambda` 1.015. Acceptance rates 0.35–0.37 against the 0.35 target.
+Convergence, quoted from the artifacts rather than from memory: the recovery table above is `test_parameter_recovery`'s output (3 chains; committed in `results/verification_output.txt`), and the committed 4-chain demo reports split R-hat max **1.011** against the 1.05 gate with acceptance in range (`results/analysis_result.json`, `model`). An earlier version of this paragraph quoted per-parameter R-hats that appeared in no committed output and attributed the 3-chain test's table to "4 overdispersed chains" — an unprovenanced number in the document about provenance.
 
 ---
 
@@ -117,15 +117,14 @@ Parts within one replicate share hyperparameter draws and are therefore correlat
 
 ## 5. Known limit: σ is weakly identified with few groups
 
-The part-to-part spread `sigma` is over-estimated when the number of part numbers is small.
+Measured by `test_sigma_identification.m`, which fits **8 replicate fleets per size** and regenerates this table on every run (truth σ = 0.45):
 
-| Part numbers | `sigma` posterior mean | 90% interval |
+| Part numbers | mean `sigma`-hat ± SE (8 replicates) | mean 90% CI width |
 |---|---|---|
-| 12 | 0.742 | [0.443, 1.141] |
-| 40 | 0.429 | [0.315, 0.552] |
-| 120 | 0.481 | [0.410, 0.562] |
+| 12 | 0.520 ± 0.101 | 0.737 |
+| 40 | 0.433 ± 0.050 | 0.335 |
 
-Truth is 0.45. This is **an identification limit, not a bug** — it is textbook behaviour for a hierarchical variance with few groups, and it resolves cleanly by 40. It is documented rather than tuned away because it has a practical consequence: with a dozen part numbers, `sigma` is the one parameter whose interval should not be taken at face value, and any downstream quantity that leans on it inherits that.
+The limitation at 12 groups is **width and prior sensitivity, not a large systematic bias**: the mean error (+0.07) is within one replicate SE of zero, while the interval is 2.2× wider than at 40 groups. Two earlier versions of this section were wrong in instructive ways. The first quoted a single-fleet table (0.742 at 12 groups) with no generating command and read its one draw as "over-estimation"; when the numbers were first regenerated with fresh seeds, the single-draw "bias" came out with the **opposite sign** — which is the difference between one draw and a bias, the same lesson §4 teaches about coverage. A bias is a property of repetition, so the test now replicates, and this document quotes only what the test prints. The practical consequence stands: with a dozen part numbers, `sigma` is the one parameter whose interval should not be taken at face value (its coverage in §4's study is 0.833 against a nominal 0.90), and any downstream quantity that leans on it inherits that.
 
 ---
 
@@ -263,7 +262,7 @@ The convergence gate now requires every R-hat to be **finite** before comparing 
 
 | Defect | Measured cost |
 |---|---|
-| The greedy allocation **stopped** at the first unaffordable item instead of ranking among affordable ones | Left $3,870 of $40,000 unspent while eight part numbers still had an affordable next unit with positive return. **1.15 availability points** against the masked rule; **1.71** against an exact dynamic program. |
+| The greedy allocation **stopped** at the first unaffordable item instead of ranking among affordable ones | Re-measured by `test_allocation_optimality.m` (which regenerates on every run): on its $40,000 configuration the stop rule strands **$1,750** and **0.31 expected backorders** (~half an availability point) against the masked rule; the masked greedy in turn sits **0.002 backorders** above the exact DP. The numbers this row used to quote ($3,870, 1.15 pts, 1.71 pts) came from a configuration and a DP that no longer existed anywhere in the repository — including, it turned out, the claim that greedy prefix-optimality "holds exactly": writing the DP disproved the *exactly* (unequal integer costs leave a ~2×10⁻³-backorder gap), which is precisely why the claim is now a measured bound with a named test. |
 | Demand assumed every installed unit was **brand new** at the start of the lead time | The demo fleet is observed for 600 hours and then sized for a 400-hour lead time. Conditional hazard from age 600 is **3.13×** the hazard from age 0; at steady state, 5.6×. The model was under-buying spares, most for the oldest units. |
 | Expected backorders were estimated by counting 4,000 Poisson samples | `EBO(s) − EBO(s+1)` is `P(D > s)`, with a sampling SE near 0.008 — comparable to the gap between adjacent candidates. Re-drawing the *same* posterior eight times moved the buy order from rank 8 onward. The docstring calls that order the explanation; an explanation that changes when nothing changed is not one. Now closed-form, validated against 100,000 samples to 0.0013. |
 | The stated direction of the renewal approximation was **backwards** — and its first correction quoted an impossible number | The comment claimed the cumulative hazard was "slightly optimistic" for `k > 1`. Recomputation says it over-states renewals by 0.8% / 28% / 191% at `T/λ` = 0.13 / 1.0 / 4.0 — it is *conservative*. The original claim had been reasoned rather than measured; the measurement that replaced it then quoted a short-row `M(T)` of 0.0257 at `H = 0.0266` from an under-sized Monte Carlo, which the one-line bound `M(T) ≥ 1 − e^(−H) = 0.02625` rules out — an impossible value that sat in the docs as "verified". The table is now recomputed by the renewal-table guard in `test_guards.m` (convolution series for the short row, seeded MC for the rest). |
@@ -279,6 +278,8 @@ The convergence gate now requires every R-hat to be **finite** before comparing 
 | A degradation reason containing a digit (`"solver returned HTTP 503"`) | **Crashed the run.** The banner interpolates the reason and then passes through `enforce()`, so the one line that must always print was the only line whose text was unconstrained. A visible degradation became a hard failure. |
 
 Boolean facts now require a specific phrase that cannot be negated into existence; numeric facts require the **value** to appear, so boilerplate that mentions quarantine without stating a rate no longer satisfies the rule.
+
+A second adversarial pass found the hyphen fix had over-corrected — everything after a *digit*-hyphen was invisible, so the right endpoint of every numeric range ("93-97.5% of target") was a free fabrication — and two more gaps besides: leading-dot decimals (".999") never matched, and magnitude *words* ("30 thousand", "1.5M") walked around the 1e5 rule with only the mantissa validated. All three are closed with attack tests in `tests/test_provenance.py`. The rule that resulted: a digit before the hyphen means a numeric range and **both endpoints are claims**; a letter before the hyphen means a designator (`A-1042`, `MIL-STD-1553`) and stays exempt. One consequence is deliberate: a date range like "1998-2004" now requires both years to trace to the result — the template never emits dates, so a model writing one is originating numbers, which is the thing this gate exists to refuse.
 
 **Stage identity could collide** — `test_distinct_params_cannot_collide`, `test_upstream_order_is_part_of_the_identity`
 

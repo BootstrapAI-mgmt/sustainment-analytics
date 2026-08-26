@@ -49,6 +49,15 @@ fprintf('  failures -- hardened %d | naive %d | truth %d\n', ...
         sum(~fleet.censored), sum(~nv.censored), sum(~truth.fleet.censored));
 fprintf('  the naive path counts every removal as a failure: %+.0f%% error\n', ...
         100 * (sum(~nv.censored) / sum(~truth.fleet.censored) - 1));
+% The naive-vs-hardened comparison goes into the structured result: the
+% README used to quote the error percentage from this console line, which
+% is committed nowhere -- an unprovenanced headline number in a repo whose
+% thesis is that numbers trace to artifacts.
+ing.hardened_failure_count = sum(~fleet.censored);
+ing.naive_failure_count    = sum(~nv.censored);
+ing.truth_failure_count    = sum(~truth.fleet.censored);
+ing.hardened_error_pct     = round(100 * (ing.hardened_failure_count / ing.truth_failure_count - 1));
+ing.naive_error_pct        = round(100 * (ing.naive_failure_count / ing.truth_failure_count - 1));
 
 % The at-risk installed base comes from the ASSET REGISTER, not from
 % however many maintenance records survived ingest. Conflating the two

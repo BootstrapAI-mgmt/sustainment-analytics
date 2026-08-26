@@ -3,11 +3,19 @@ function alloc = marginal_spares_allocation(dem, cost, n_aircraft, qty, budget, 
 %
 %   Classic marginal analysis: repeatedly buy the single spare that
 %   removes the most expected backorders per dollar. Because expected
-%   backorders are convex and decreasing in the stock level, the greedy
-%   order is the efficient frontier -- every prefix is the best allocation
-%   available at its own cumulative cost, so one pass produces the whole
-%   cost/availability curve. (That prefix-optimality claim was checked
-%   against an exact dynamic program at every prefix cost; it holds.)
+%   backorders are convex and decreasing in the stock level, one pass
+%   produces the whole cost/EBO curve. How good that curve is, is
+%   MEASURED, not asserted: tests/test_allocation_optimality.m holds it
+%   against an exact budget-indexed dynamic program for the EBO objective
+%   and finds every prefix within ~2e-3 backorders (of totals near 20) of
+%   the DP at its own spend on the demo-scale configuration. An earlier
+%   version of this comment said the prefix optimality "holds exactly",
+%   citing a DP that existed nowhere in the repository -- the test that
+%   now exists is what disproved the "exactly": with unequal integer
+%   costs the greedy can sit a hair above the DP, and the honest claim is
+%   the measured bound. (Availability weights each part's backorders
+%   differently, so the availability-optimal allocation is a different,
+%   combinatorial problem that neither the greedy nor the DP solves.)
 %
 %   The reason to prefer this over handing the same problem to a general
 %   integer-program solver is not speed. It is that the ORDER of the buy
@@ -19,19 +27,20 @@ function alloc = marginal_spares_allocation(dem, cost, n_aircraft, qty, budget, 
 %
 %   AFFORDABILITY IS A MASK, NOT A STOP. An earlier version broke out of
 %   the loop the first time the best-ranked candidate exceeded the
-%   remaining budget. That is wrong, and measurably so: on the demo
-%   configuration it left $3,870 of $40,000 unspent while eight parts
-%   still had an affordable next unit with positive marginal return,
-%   costing 1.15 availability points against the same rule with the mask,
-%   and 1.71 against an exact dynamic program. The buy list now ranks only
-%   among candidates it can actually afford.
+%   remaining budget, leaving budget unspent while cheaper parts still had
+%   affordable units with positive return. Re-measured by
+%   tests/test_allocation_optimality.m on its fixed $40,000 configuration:
+%   the stop rule leaves $1,750 unspent and 0.31 expected backorders
+%   (about half an availability point) on the table against the same rule
+%   with the mask. (Earlier versions of this comment quoted a different
+%   configuration's numbers from memory; only the test's output is quoted
+%   now, because only the test's output regenerates.)
 %
-%   The result is therefore a budget-constrained greedy, which is a
-%   heuristic for what is formally a knapsack -- it recovers roughly
-%   two-thirds of the gap to the DP optimum. That is stated rather than
-%   implied: STOP_REASON records why the list ended, so "budget spent",
-%   "stock cap reached", and "nothing left worth buying" are never
-%   confused for one another.
+%   The result is a budget-constrained greedy: formally a knapsack
+%   heuristic, measured on the same test at 0.002 expected backorders
+%   (under 0.01%) above the exact DP at the full budget. STOP_REASON
+%   records why the list ended, so "budget spent", "stock cap reached",
+%   and "nothing left worth buying" are never confused for one another.
 
     N = numel(cost);
     if nargin < 6 || isempty(s_max), s_max = 30; end
